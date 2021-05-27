@@ -1,0 +1,1 @@
++ run file index.html vào cửa sổ console để xem kết quả
