@@ -96,11 +96,11 @@ let first = new VillageState(
     );
 let next = first.move("Alice's House");
     
-console.log(next.place);
+// console.log(next.place);
     // → Alice's House
-console.log(next.parcels);
+// console.log(next.parcels);
     // → []
-console.log(first.place);
+// console.log(first.place);
     // → Post Office
     
 /*//done
@@ -169,6 +169,14 @@ VillageState.random = function(parcelCount = 5) {
     return new VillageState("Post Office", parcels);        // trả về 1 VillageState mới có vị trí hiện tại là Post Office và gồm 5 đơn hàng
 };
 
+var testParcels = [{place: "Farm", address: "Post Office"},
+                    {place: "Daria's House", address: "Marketplace"},
+                    {place: "Daria's House", address: "Alice's House"},
+                    {place: "Alice's House", address: "Post Office"},
+                    {place: "Alice's House", address: "Marketplace"}]; 
+var testRandom = new VillageState("Post Office", testParcels);
+// console.log(testRandom);
+
 /*
 var test = new VillageState("Post Office", [
     {place: "Shop", address: "Marketplace"},
@@ -183,6 +191,9 @@ let tim = (parcels, pla) => parcels.some( p => p.place === pla);
 console.log(tim(test.parcels, "Post Office"));
 */
 
+var stateRandom = VillageState.random();
+console.log(stateRandom);
+
 
 /*
     * ý tưởng 1:
@@ -191,7 +202,10 @@ chạy đến khi nào gửi hết đơn hàng
 */
 
 // test: 1 ------- số bước lớn hoặc nhỏ, ko ổn định
-// runRobot(VillageState.random(), randomRobot);     
+// runRobot(VillageState.random(), randomRobot);
+console.log('===============================================test 1: random');     
+runRobot(stateRandom, randomRobot);
+
 
 // → Moved to Marketplace
 // → Moved to Town Hall
@@ -226,56 +240,265 @@ function routeRobot(state, memory) {
 //   runRobotAnimation(VillageState.random(), routeRobot, []);
 
 // test: 2 ---------- số bước luôn <= 26 bước
-// runRobot(VillageState.random(), routeRobot, []);         
-
+// runRobot(VillageState.random(), routeRobot, []);  
+console.log('===============================================test 2: mailRoute');       
+runRobot(stateRandom, routeRobot, []);
 // runRobot(test, routeRobot, []);
 
-
-
-function findRoute(graph, from, to) {
-    let work = [{at: from, route: []}];
-    for (let i = 0; i < work.length; i++) {
-        let {at, route} = work[i];
-        for (let place of graph[at]) {
-            if (place == to) return route.concat(place);
-            if (!work.some(w => w.at == place)) {
-                work.push({at: place, route: route.concat(place)});
+                                                 
+// hàm tìm đg
+/*
+    ý tưởng: tương tự duyệt theo chiều rộng, từ A thiết lập đg đi đến tất cả các cạnh của A (A1 A2 A3),
+    làm tương tự với (A1 A2 A3) đến bao h có 1 tuyến đg đến điểm đích thì dừng lại và trả về tuyến đg đó.
+*/
+function findRoute(graph, from, to) {                                 
+    let work = [{at: from, route: []}];                               
+    for (let i = 0; i < work.length; i++) {                           
+        let {at, route} = work[i];                                    
+        for (let place of graph[at]) {                                
+            if (place == to) return route.concat(place);              
+            if (!work.some(w => w.at == place)) {                     
+                work.push({at: place, route: route.concat(place)});   
             }
         }
     }
 }
 /*
 + arr.some (bool) tìm xem trong mảng có phần tử thỏa mãn ko
-+ arr.concat ([]) tạo ra một mảng mới từ 2 mảng phần phần
++ arr.concat ([]) tạo ra một mảng mới từ 2 mảng phần phần (nối mảng)
 */
 
+// var testfindRoute = findRoute(roadGraph, "Alice's House", "Ernie's House");
+// console.log(testfindRoute);
+
+
 function goalOrientedRobot({place, parcels}, route) {
-    if (route.length == 0) {
-        let parcel = parcels[0];
-        if (parcel.place != place) {
-            route = findRoute(roadGraph, place, parcel.place);
-        } else {
-            route = findRoute(roadGraph, place, parcel.address);
+    if (route.length == 0) {                                       // nếu chưa có danh sách đg đi 
+        let parcel = parcels[0];                                   // lưu lại đơn hàng đầu tiên có trong kho
+        if (parcel.place != place) {                               // nếu vị trí hiện tại khác địa điểm nhận hàng
+            route = findRoute(roadGraph, place, parcel.place);     // tìm đg đi từ vị trị hiện tại đến điểm nhận hàng
+        } else {                                                   // nếu vị trí hiện tại trùng với địa điểm nhận hàng
+            route = findRoute(roadGraph, place, parcel.address);   // tìm đg đi đến điểm giao hàng
         }
     }
     
-    return {direction: route[0], memory: route.slice(1)};
+    return {direction: route[0], memory: route.slice(1)};          // trả về 1 obj với direction: điểm đến tiếp theo, memory: mảng đg đi
 }
 
 
 // test 3: thường ít hơn 18 lượt
 // runRobot(VillageState.random(), goalOrientedRobot, []);
 // runRobot(test, goalOrientedRobot, []);
+console.log('===============================================test 3: goalOrientedRobot');
+runRobot(stateRandom, goalOrientedRobot, []);
 
-
-//   runRobotAnimation(VillageState.random(),
 //   goalOrientedRobot, []);
+
+// -----------------------------------------------------------------
+
+
+// dijkstra
+
+// hàm chuyển đổi tử tên địa điểm(string) sang số (number)
+function convert(pram) {
+    switch(pram) {
+        case "Alice's House":
+            return 0;
+        case "Bob's House":
+            return 1;
+        case "Cabin":
+            return 2;
+        case "Daria's House":
+            return 3;
+        case "Ernie's House":
+            return 4;
+        case "Farm":
+            return 5;
+        case "Grete's House":
+            return 6;
+        case "Marketplace":
+            return 7;
+        case "Post Office":
+            return 8;
+        case "Shop":
+            return 9;
+        case "Town Hall":
+            return 10;
+        case 0:
+            return "Alice's House";
+        case 1:
+            return "Bob's House";
+        case 2:
+            return "Cabin";
+        case 3:
+            return "Daria's House";
+        case 4:
+            return "Ernie's House";
+        case 5:
+            return "Farm";
+        case 6:
+            return "Grete's House";
+        case 7:
+            return "Marketplace";
+        case 8:
+            return "Post Office";
+        case 9:
+            return "Shop";
+        case 10:
+            return "Town Hall";
+    }
+}
+
+
+var vocung = 1000000;
+
+// hàm tạo ma trận đường đi
+function arrGraph(roadGraph) {
+    var out = [];
+    var keys = Object.keys(roadGraph);
+    var outSize = keys.length;
+
+    for(var i = 0; i < outSize; i ++) {
+        var temp = [];
+        for(var j = 0; j < outSize; j ++) {
+            temp[j] = vocung;
+        }
+
+        out[i] = temp;
+    }
+
+    for(var key of keys) {
+        for(var i of roadGraph[key]) {
+            out[convert(key)][convert(i)] = 1;
+        }
+    }
+
+    return out;
+
+}
+console.log('===============================================test 4: dijkstra');
+var arrRoadGraph = arrGraph(roadGraph);
+console.log(arrRoadGraph);
+
+
+
+function dijkstra(arrRoad, from, to) {
+    var s = convert(from);
+    var t = convert(to);
+
+    var truoc = [];
+    var d = [];
+    var chuaxet = [];
+
+    var u, minp;
+    var n = arrRoad.length;
+    //khởi tạo nhãn tạm thời cho các đỉnh.
+   
+    for (var v = 0; v < n; v++){
+        d[v] = arrRoad[s][v];
+        truoc[v] = s;
+        chuaxet[v] = false;
+    }
+   
+    truoc[s] = 0;
+    d[s] = 0;
+    chuaxet[s] = true;
+   
+    //bươc lặp
+    while (!chuaxet[t]) {
+        minp = vocung;
+   
+        //tìm đỉnh u sao cho d[u] là nhỏ nhất
+        for (var v = 0; v < n; v++){
+            if ((!chuaxet[v]) && (minp > d[v])){
+                u = v;
+                minp = d[v];
+            }
+        }
+   
+        chuaxet[u] = true;// u la dinh co nhan tam thoi nho nhat
+   
+        if (!chuaxet[t]){
+    
+            //gán nhãn lại cho các đỉnh.
+            for (var v = 0; v < n; v++){
+                if ((!chuaxet[v]) && (d[u] + arrRoad[u][v] < d[v])){
+                    d[v] = d[u] + arrRoad[u][v];
+                    truoc[v] = u;
+                }
+            }
+    
+        } 
+    }
+    
+    var route = [];
+    var routeTemp = [];
+    routeTemp.push(t);
+
+    var i = truoc[t];
+    while (i != s){
+        routeTemp.push(i)
+        i = truoc[i];
+    }
+    
+    for(var i = 0; i < routeTemp.length; i ++) {
+        route.push(convert(routeTemp[routeTemp.length - 1 - i]));
+    }
+
+    return route;
+}
+
+// var testDij = dijkstra(arrRoadGraph, "Marketplace", "Alice's House");
+// console.log(testDij);
+
+function dijkstraRobot({place, parcels}, route) {
+    if (route.length == 0) {
+        let orderRoutes = [];       // gửi
+        let receiveRoutes = [];     // nhận
+    
+        for (const parcel of parcels) {
+          if (parcel.place != place) {
+            orderRoutes.push(dijkstra(arrRoadGraph, place, parcel.place));
+          } else {
+            receiveRoutes.push(dijkstra(arrRoadGraph, place, parcel.address));
+          }
+        }
+    
+        orderRoutes.sort((a, b) => {
+          return a.length - b.length;
+        });
+    
+        receiveRoutes.sort((a, b) => {
+          return a.length - b.length;
+        });
+    
+        // route = orderRoutes.length == 0 ? receiveRoutes[0] : orderRoutes[0];
+        if(orderRoutes.length == 0) {
+            route = receiveRoutes[0];
+        } else if(receiveRoutes.length == 0) {
+            route = orderRoutes[0];
+        } else if(orderRoutes.length > 0 && receiveRoutes.length > 0) {
+            route = orderRoutes[0].length > receiveRoutes[0].length ? receiveRoutes[0] : orderRoutes[0];
+        }
+        
+    }
+
+    return {direction: route[0], memory: route.slice(1)};
+}
+
+// compareRobots(dijkstraRobot, [], goalOrientedRobot, []);
+// runRobot(testRandom, dijkstraRobot, []);
+
+
+runRobot(stateRandom, dijkstraRobot, []);
+// -----------------------------------------------------------------
+
 
 /*
 đề 1: có 100 nhiệm vụ (mỗi nhiệm vụ gồm 5 đơn hàng), tạo ra 2 robot sử dụng 2 hàm tìm đg
     là routeRobot và goalOrientedRobot để thực hiện đồng thời từng nhiệm vụ
     lưu lại kết quả từng nhiệm vụ, trả lại số bước đi trung bình của từng robot
-*/
+    */
 
 // my code
 
@@ -324,68 +547,6 @@ let placeInParcels = (parcels, pla) => parcels.some( p => p.place === pla);
 let parcel = (parcels, pla) => parcels.find(p => p.place === pla);
 // console.log(tim(test.parcels, "Post Office"));
 
-
-// function goalOrientedRobot_1({place, parcels}, route) {
-//     if (route.length == 0) {
-//         if(placeInParcels(parcels, place)) {
-//             route = findRoute(roadGraph, place, parcel(parcels, place).address);
-//         } else {
-//             let routes = {min: 13, rou: []};
-//             for(let i = 0; i < parcels.length; i ++) {
-//                 let temp = findRoute(roadGraph, place, parcels[i].place);
-//                 if(temp.length < routes.min) {
-//                     routes.min = temp.length;
-//                     routes.rou = new Array(...temp);
-//                 }
-//             }
-//             route = routes.rou;
-//         }
-//     }
-    
-//     return {direction: route[0], memory: route.slice(1)};
-// }
-
-// compareRobots(goalOrientedRobot, [], goalOrientedRobot_1, []);
-
-// function goalOrientedRobot_1({place, parcels}, route) {
-//     if (route.length == 0) {
-//         let orderRoutes = [];       // gửi
-//         let receiveRoutes = [];     // nhận
-    
-//         for (const parcel of parcels) {
-//           if (parcel.place != place) {
-//             orderRoutes.push(findRoute(roadGraph, place, parcel.place));
-//           } else {
-//             receiveRoutes.push(findRoute(roadGraph, place, parcel.address));
-//           }
-//         }
-    
-//         orderRoutes.sort((a, b) => {
-//           return a.length - b.length;
-//         });
-    
-//         receiveRoutes.sort((a, b) => {
-//           return a.length - b.length;
-//         });
-    
-//         // route = orderRoutes.length == 0 ? receiveRoutes[0] : orderRoutes[0];
-//         // route = receiveRoutes.length < orderRoutes.length ? receiveRoutes[0] : orderRoutes[0];
-//         if(orderRoutes.length == 0) {
-//             route = receiveRoutes[0];
-//         }else {
-//             route = receiveRoutes.length < orderRoutes.length ? receiveRoutes[0] : orderRoutes[0];
-//         }
-//     }
-
-//     console.log(route);
-//     return { direction: route[0], memory: route.slice(1) };
-// }
-
-// var t = VillageState.random();
-// console.log(t);
-// console.log("++++++++++++++++++++++");
-// runRobot(t, goalOrientedRobot_1, []);
-
 function goalOrientedRobot_2({place, parcels}, route) {
     if (route.length == 0) {
         let orderRoutes = [];       // gửi
@@ -420,10 +581,14 @@ function goalOrientedRobot_2({place, parcels}, route) {
     return { direction: route[0], memory: route.slice(1) };
 }
 
-// run đề 2
-// runRobot(VillageState.random(), goalOrientedRobot_2, []);
-compareRobots(goalOrientedRobot, [], goalOrientedRobot_2, []);
 
+// run đề 2
+console.log('===============================================test 5: goalOrientedRobot_2 (cai tien)');
+runRobot(stateRandom, goalOrientedRobot_2, []);
+// runRobot(VillageState.random(), goalOrientedRobot_2, []);
+// compareRobots(goalOrientedRobot_2, [], goalOrientedRobot, []);
+// compareRobots(dijkstraRobot, [], goalOrientedRobot, []);
+// compareRobots(dijkstraRobot, [], goalOrientedRobot_2, []);
 
 // đề 3
 class PGroup {
@@ -453,14 +618,14 @@ class PGroup {
   let ab = a.add("b");
   let b = ab.delete("a");
   
-  console.log(a);
-  console.log(ab);
-  console.log(b);
+//   console.log(a);
+//   console.log(ab);
+//   console.log(b);
 
-  console.log(b.has("b"));
+//  console.log(b.has("b"));
   // → true
-  console.log(a.has("b"));
+//  console.log(a.has("b"));
   // → false
-  console.log(b.has("a"));
+//  console.log(b.has("a"));
   // → false
 
